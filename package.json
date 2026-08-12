@@ -1,6 +1,7 @@
 {
-  "name": "backend",
+  "name": "job-tracker",
   "version": "1.0.0",
+  "description": "A full-stack job application tracker built to manage and monitor job applications during placement season.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -8,13 +9,8 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
-    "dotenv": "^16.6.1",
     "express": "^5.2.1",
-    "mysql2": "^3.22.5"
-  },
-  "devDependencies": {
     "nodemon": "^3.1.14"
   }
 }
