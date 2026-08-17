@@ -6,7 +6,8 @@ app.use(express.urlencoded({extended:true}))
 app.get("/health",(req,res)=>{
     res.send("Website is working properly");
 })
-app.listen(8000,()=>{
-    console.log("Server is running");
+const PORT = process.env.PORT || 8000
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`)
 })
 
