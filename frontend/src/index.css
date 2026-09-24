@@ -1,0 +1,39 @@
+:root {
+  --base: #141210;
+  --panel: #1C1917;
+  --panel2: #232019;
+  --line: #332E27;
+  --bone: #F2EDE4;
+  --mute: #9C9184;
+  --clay: #E4572E;
+  --clay-dim: #7A3320;
+  --sun: #E9B44C;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--base);
+  color: var(--bone);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; }
+
+button { font-family: inherit; }
+
+input, textarea, select {
+  font-family: inherit;
+}
+
+/* focus visibility for accessibility */
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--clay);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

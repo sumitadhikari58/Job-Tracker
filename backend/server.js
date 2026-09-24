@@ -6,7 +6,8 @@ app.use(express.urlencoded({extended:true}))
 
 const authRoutes = require("./routes/authRoutes.js")
 const jobRoutes = require('./routes/jobRoutes')
-
+const cors = require('cors')
+app.use(cors())
 app.use("/api/auth", authRoutes)
 app.use('/api/jobs', jobRoutes)
 
