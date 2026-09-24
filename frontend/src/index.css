@@ -37,3 +37,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* responsive layout - pages use inline styles, these classes override on small screens */
+@media (max-width: 860px) {
+  .hero-grid { grid-template-columns: 1fr !important; }
+  .auth-grid { grid-template-columns: 1fr !important; }
+  .auth-hero { display: none !important; }
+}
+
+@media (max-width: 560px) {
+  .page-pad { padding-left: 16px !important; padding-right: 16px !important; }
+  .form-grid { grid-template-columns: 1fr !important; }
+  .hide-sm { display: none; }
+}

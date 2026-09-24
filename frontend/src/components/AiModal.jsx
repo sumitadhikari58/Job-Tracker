@@ -3,7 +3,10 @@ import { Sparkles, Upload } from "lucide-react";
 import Overlay from "./Overlay.jsx";
 import Field from "./Field.jsx";
 import { C, STATUS_COLOR, input, bigAction, rowSpan } from "../theme.js";
-import api from "../api/client.js";
+import { errorMessage } from "../api/client.js";
+import { resumeMatch } from "../api/ai.js";
+
+const MAX_FILE_MB = 5;
 
 export default function AiModal({ onClose }) {
   const [stage, setStage] = useState("input");
@@ -17,21 +20,19 @@ export default function AiModal({ onClose }) {
       setError("Add both a resume and a job description.");
       return;
     }
+    if (file.size > MAX_FILE_MB * 1024 * 1024) {
+      setError(`Resume must be under ${MAX_FILE_MB} MB.`);
+      return;
+    }
     setError("");
     setStage("loading");
     try {
       // send resume + JD to the backend, which calls the AI model.
-      // FormData is used because we're uploading a file.
-      const data = new FormData();
-      data.append("resume", file);
-      data.append("job_description", jd);
-      const res = await api.post("/ai/resume-match", data, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await resumeMatch(file, jd);
       setResult(res.data);
       setStage("result");
     } catch (err) {
-      setError("Couldn't analyze right now. Try again.");
+      setError(errorMessage(err, "Couldn't analyze right now. Try again."));
       setStage("input");
     }
   }
@@ -52,7 +53,7 @@ export default function AiModal({ onClose }) {
             <Upload size={22} color={C.mute} />
             <p style={{ margin: "8px 0 0", fontSize: 14, color: C.bone, fontWeight: 500 }}>Upload resume (PDF)</p>
             <p style={{ margin: "2px 0 0", fontSize: 12, color: C.mute }}>{file ? file.name : "No file selected"}</p>
-            <input type="file" accept="application/pdf" style={{ display: "none" }} onChange={(e) => setFile(e.target.files[0])} />
+            <input type="file" accept="application/pdf" style={{ display: "none" }} onChange={(e) => setFile(e.target.files[0] || null)} />
           </label>
           <Field label="Job description">
             <textarea value={jd} onChange={(e) => setJd(e.target.value)} placeholder="Paste the job description here..." style={{ ...input, minHeight: 110, resize: "vertical" }} />
@@ -101,8 +102,8 @@ function Block({ title, items, color }) {
     <div style={{ marginBottom: 14 }}>
       <div style={{ fontSize: 13, fontWeight: 700, color, marginBottom: 8 }}>{title}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {(items || []).map((it) => (
-          <div key={it} style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "10px 13px", background: C.panel, border: "1px solid " + C.line, borderRadius: 9, fontSize: 13, color: "#C4B9AB" }}>
+        {(items || []).map((it, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "10px 13px", background: C.panel, border: "1px solid " + C.line, borderRadius: 9, fontSize: 13, color: "#C4B9AB" }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, marginTop: 6, flexShrink: 0 }} />{it}
           </div>
         ))}

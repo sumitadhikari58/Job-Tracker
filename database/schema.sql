@@ -1,24 +1,24 @@
-create database job_tracker;
-use job_tracker;
-create table users(
-id int not null primary key auto_increment,
-name varchar(30) not null,
-email varchar(100) not null unique,
-password varchar(255) ,
-created_at timestamp default current_timestamp
+CREATE DATABASE IF NOT EXISTS job_tracker;
+USE job_tracker;
+
+CREATE TABLE IF NOT EXISTS users (
+    id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(30) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-create table jobs(
-id int not null primary key auto_increment,
-user_id int not null,
-company_name varchar(30) not null,
-role varchar(20) not null,
-status ENUM('Applied', 'OA', 'Interview', 'Offer', 'Rejected'),
-job_link varchar(40),
-notes text,
-date_applied date not null,
-created_at timestamp default current_timestamp,
-updated_at timestamp default current_timestamp on update current_timestamp,
-foreign key (user_id) references users(id) 
+
+CREATE TABLE IF NOT EXISTS jobs (
+    id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    company_name VARCHAR(100) NOT NULL,
+    role VARCHAR(100) NOT NULL,
+    status ENUM('Applied', 'OA', 'Interview', 'Offer', 'Rejected') NOT NULL DEFAULT 'Applied',
+    job_link VARCHAR(500),
+    notes TEXT,
+    date_applied DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-ALTER TABLE users MODIFY COLUMN password varchar(255) not null;
-SELECT * FROM jobs;

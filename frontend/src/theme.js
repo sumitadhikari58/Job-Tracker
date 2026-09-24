@@ -15,7 +15,16 @@ export const ghost = { display: "inline-flex", alignItems: "center", gap: 7, pad
 export const icon = { display: "inline-grid", placeItems: "center", width: 34, height: 34, borderRadius: 9, border: "1px solid " + C.line, background: "transparent", color: C.mute, cursor: "pointer" };
 export const rowSpan = { display: "inline-flex", alignItems: "center", gap: 8 };
 
+// today's date as yyyy-mm-dd in the user's timezone (toISOString() would use UTC)
+export function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function fmtDate(d) {
   if (!d) return "";
-  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  // "2026-09-24" would be parsed as UTC midnight and can show the previous day,
+  // so build the date from its parts in local time instead.
+  const [y, m, day] = String(d).slice(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, day).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }

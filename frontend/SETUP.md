@@ -5,10 +5,11 @@ cd frontend
 npm install
 
 ## 2. Point it at your backend
-The .env file has:
-VITE_API_URL=http://localhost:8000/api
+In development nothing is needed: the Vite dev server proxies /api to
+http://localhost:8000 (see vite.config.js).
 
-That matches your Express server. When you deploy, change this to your EC2 URL.
+For a deployed build, copy .env.example to .env and set
+VITE_API_URL to your EC2 URL, e.g. https://api.example.com/api
 
 ## 3. Run
 npm run dev
@@ -23,8 +24,9 @@ node server.js   (or nodemon server.js)
 src/
   api/          -> talks to your Express backend (axios)
     client.js   -> axios instance + attaches JWT to every request
-    auth.js     -> register / login calls
+    auth.js     -> register / login / me calls
     jobs.js     -> job CRUD calls
+    ai.js       -> resume match upload
   context/
     AuthContext.jsx -> holds "am I logged in" state, stores the JWT
   components/   -> reusable UI (JobCard, JobModal, AiModal, etc.)
@@ -33,6 +35,6 @@ src/
   theme.js      -> colors and shared styles
 
 ## Note on the AI feature
-The Resume Match modal calls POST /api/ai/resume-match on your backend.
-That endpoint isn't built yet — it's the one remaining backend piece.
-Everything else (auth + job CRUD) is wired to routes you already built.
+The Resume Match modal calls POST /api/ai/resume-match on the backend,
+which sends the PDF + job description to Google Gemini.
+Set GEMINI_API_KEY in backend/.env to enable it.

@@ -2,18 +2,22 @@ import { useState, useEffect, useMemo } from "react";
 import { Plus, Search, LogOut, Sparkles, ArrowRight, ArrowUpRight } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getJobs, createJob, updateJob, deleteJob } from "../api/jobs.js";
+import { errorMessage } from "../api/client.js";
 import Mark from "../components/Mark.jsx";
 import JobCard from "../components/JobCard.jsx";
 import JobModal from "../components/JobModal.jsx";
 import AiModal from "../components/AiModal.jsx";
-import { C, STATUSES, STATUS_COLOR, input, bigAction, ghost, rowSpan } from "../theme.js";
+import { C, STATUSES, STATUS_COLOR, input, bigAction, ghost, rowSpan, todayISO } from "../theme.js";
 
 const emptyForm = { company_name: "", role: "", status: "Applied", job_link: "", notes: "", date_applied: "" };
 
 export default function Dashboard() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const [modalOpen, setModalOpen] = useState(false);
@@ -30,8 +34,9 @@ export default function Dashboard() {
     try {
       const res = await getJobs();
       setJobs(res.data);
+      setLoadError("");
     } catch (err) {
-      console.error("Failed to load jobs", err);
+      setLoadError(errorMessage(err, "Couldn't load your applications. Is the backend running?"));
     } finally {
       setLoading(false);
     }
@@ -44,61 +49,90 @@ export default function Dashboard() {
   }, [jobs]);
 
   const visible = useMemo(() => jobs.filter((j) => {
-    const q = j.company_name.toLowerCase().includes(query.toLowerCase()) || j.role.toLowerCase().includes(query.toLowerCase());
+    const needle = query.trim().toLowerCase();
+    const q = j.company_name.toLowerCase().includes(needle) || j.role.toLowerCase().includes(needle);
     const f = filter === "All" || j.status === filter;
     return q && f;
   }), [jobs, query, filter]);
 
   function openAdd() {
     setEditing(null);
-    setForm({ ...emptyForm, date_applied: new Date().toISOString().slice(0, 10) });
+    setFormError("");
+    setForm({ ...emptyForm, date_applied: todayISO() });
     setModalOpen(true);
   }
   function openEdit(job) {
-    // date from MySQL comes as full ISO; trim to yyyy-mm-dd for the date input
+    // copy only the editable fields; nulls from MySQL become "" so inputs stay controlled.
+    // date is trimmed to yyyy-mm-dd for the date input.
     setEditing(job.id);
-    setForm({ ...job, date_applied: job.date_applied?.slice(0, 10) || "" });
+    setFormError("");
+    const fields = Object.fromEntries(Object.keys(emptyForm).map((k) => [k, job[k] ?? ""]));
+    setForm({ ...fields, date_applied: String(fields.date_applied).slice(0, 10) });
     setModalOpen(true);
   }
 
   async function saveJob() {
-    if (!form.company_name || !form.role) return;
+    if (!form.company_name.trim() || !form.role.trim() || !form.date_applied) {
+      setFormError("Company, role and date applied are required.");
+      return;
+    }
+    setSaving(true);
+    setFormError("");
     try {
       if (editing) await updateJob(editing, form);
       else await createJob(form);
       setModalOpen(false);
       loadJobs();   // refresh list from backend
     } catch (err) {
-      console.error("Save failed", err);
+      setFormError(errorMessage(err, "Couldn't save. Try again."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // quick status change from the card - backend accepts a partial update
+  async function changeStatus(id, status) {
+    const previous = jobs;
+    setJobs((p) => p.map((j) => (j.id === id ? { ...j, status } : j)));  // optimistic update
+    try {
+      await updateJob(id, { status });
+    } catch (err) {
+      setJobs(previous);
+      setLoadError(errorMessage(err, "Couldn't update status."));
     }
   }
 
   async function removeJob(id) {
+    const job = jobs.find((j) => j.id === id);
+    if (!window.confirm(`Delete your ${job?.company_name ?? ""} application? This can't be undone.`)) return;
     try {
       await deleteJob(id);
-      setJobs((p) => p.filter((j) => j.id !== id));  // optimistic update
+      setJobs((p) => p.filter((j) => j.id !== id));
     } catch (err) {
-      console.error("Delete failed", err);
+      setLoadError(errorMessage(err, "Couldn't delete. Try again."));
     }
   }
 
   return (
     <div style={{ minHeight: "100vh", background: C.base, color: C.bone }}>
       <header style={{ borderBottom: "1px solid " + C.line, position: "sticky", top: 0, background: C.base, zIndex: 20 }}>
-        <div style={{ maxWidth: 1120, margin: "0 auto", padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div className="page-pad" style={{ maxWidth: 1120, margin: "0 auto", padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
             <Mark />
             <span style={{ fontWeight: 800, fontSize: 19, letterSpacing: "-0.03em" }}>jobtrackr</span>
           </div>
-          <button onClick={logout} style={ghost}><LogOut size={15} /> Sign out</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            {user?.name && <span className="hide-sm" style={{ fontSize: 14, color: C.mute }}>Hi, {user.name}</span>}
+            <button onClick={logout} style={ghost}><LogOut size={15} /> Sign out</button>
+          </div>
         </div>
       </header>
 
-      <main style={{ maxWidth: 1120, margin: "0 auto", padding: "40px 28px 90px" }}>
-        <section style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 28, marginBottom: 40 }}>
+      <main className="page-pad" style={{ maxWidth: 1120, margin: "0 auto", padding: "40px 28px 90px" }}>
+        <section className="hero-grid" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 28, marginBottom: 40 }}>
           <div style={{ background: C.panel, border: "1px solid " + C.line, borderRadius: 20, padding: "34px 34px 30px", position: "relative", overflow: "hidden" }}>
             <div style={{ position: "absolute", right: -40, top: -40, width: 220, height: 220, background: "radial-gradient(circle, " + C.clayDim + "55, transparent 70%)" }} />
-            <div style={{ fontSize: 13, color: C.mute, fontWeight: 600, letterSpacing: "0.04em" }}>Placement season - 2026</div>
+            <div style={{ fontSize: 13, color: C.mute, fontWeight: 600, letterSpacing: "0.04em" }}>Placement season - {new Date().getFullYear()}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginTop: 14 }}>
               <span style={{ fontSize: 76, fontWeight: 800, letterSpacing: "-0.05em", lineHeight: 0.9 }}>{counts.All}</span>
               <span style={{ fontSize: 17, color: C.mute, fontWeight: 500 }}>applications<br />in flight</span>
@@ -146,6 +180,13 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {loadError && (
+          <div role="alert" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "12px 16px", marginBottom: 16, border: "1px solid " + C.clay + "66", borderRadius: 12, color: C.clay, fontSize: 14 }}>
+            <span>{loadError}</span>
+            <button onClick={() => { setLoadError(""); loadJobs(); }} style={{ ...ghost, padding: "6px 12px", fontSize: 13 }}>Retry</button>
+          </div>
+        )}
+
         {loading ? (
           <div style={{ textAlign: "center", padding: "70px 20px", color: C.mute }}>Loading your board...</div>
         ) : visible.length === 0 ? (
@@ -154,12 +195,12 @@ export default function Dashboard() {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {visible.map((job) => <JobCard key={job.id} job={job} onEdit={openEdit} onDelete={removeJob} />)}
+            {visible.map((job) => <JobCard key={job.id} job={job} onEdit={openEdit} onDelete={removeJob} onStatusChange={changeStatus} />)}
           </div>
         )}
       </main>
 
-      {modalOpen && <JobModal form={form} setForm={setForm} editing={editing} onClose={() => setModalOpen(false)} onSave={saveJob} />}
+      {modalOpen && <JobModal form={form} setForm={setForm} editing={editing} error={formError} saving={saving} onClose={() => setModalOpen(false)} onSave={saveJob} />}
       {aiOpen && <AiModal onClose={() => setAiOpen(false)} />}
     </div>
   );
