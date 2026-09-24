@@ -13,6 +13,22 @@ Respond with JSON only, using exactly this shape:
 Job description:
 `
 
+// Turn Gemini/SDK failures into a message that says what to fix
+const describeError = (err) => {
+    const msg = err.message || ''
+    if (/API key not valid|API_KEY_INVALID/i.test(msg)) return "Gemini API key is invalid - check GEMINI_API_KEY in backend/.env"
+    if (err.status === 403) return "Gemini API key doesn't have access - check the key's restrictions in Google AI Studio"
+    if (err.status === 404) return `Gemini model "${process.env.GEMINI_MODEL || 'gemini-3.6-flash'}" not found - set GEMINI_MODEL in backend/.env to a current model`
+    if (err.status === 429) return "Gemini rate limit or free quota reached - wait a minute and try again"
+    if (/location is not supported/i.test(msg)) return "Gemini API isn't available in your region"
+    if (err instanceof SyntaxError) return "The AI returned an unreadable answer - try again"
+    if (/fetch failed|ENOTFOUND|ECONNREFUSED|ETIMEDOUT/i.test(msg)) return "Backend couldn't reach Google's servers - check your internet connection"
+    return "Couldn't analyze the resume right now. Try again."
+}
+
+// Models sometimes wrap JSON in ```json fences even when asked not to
+const parseJson = (text) => JSON.parse(text.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, ''))
+
 const toStringList = (value) =>
     Array.isArray(value) ? value.filter((v) => typeof v === 'string' && v.trim()).slice(0, 6) : []
 
@@ -33,7 +49,7 @@ const resumeMatch = async (req, res) => {
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
         const model = genAI.getGenerativeModel({
-            model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+            model: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
             generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
         })
 
@@ -42,7 +58,7 @@ const resumeMatch = async (req, res) => {
             { text: PROMPT + jobDescription.slice(0, 15000) },
         ])
 
-        const parsed = JSON.parse(result.response.text())
+        const parsed = parseJson(result.response.text())
         const score = Math.max(0, Math.min(100, Math.round(Number(parsed.score) || 0)))
 
         res.status(200).json({
@@ -53,8 +69,8 @@ const resumeMatch = async (req, res) => {
             gaps: toStringList(parsed.gaps),
         })
     } catch (err) {
-        console.error("Resume match failed:", err.message)
-        res.status(502).json({ message: "Couldn't analyze the resume right now. Try again." })
+        console.error("Resume match failed:", err.status || '', err.message)
+        res.status(502).json({ message: describeError(err) })
     }
 }
 

@@ -32,7 +32,10 @@ export default function AiModal({ onClose }) {
       setResult(res.data);
       setStage("result");
     } catch (err) {
-      setError(errorMessage(err, "Couldn't analyze right now. Try again."));
+      // no response at all usually means the backend isn't running
+      setError(err.response
+        ? errorMessage(err, "Couldn't analyze right now. Try again.")
+        : "Can't reach the backend - make sure it's running on port 8000.");
       setStage("input");
     }
   }
