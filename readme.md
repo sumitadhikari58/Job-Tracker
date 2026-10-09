@@ -8,7 +8,7 @@ JobTrackr lets a user log job applications, track their status through the hirin
 
 ## Tech Stack
 
-**Frontend:** React (Vite) + React Router + Axios
+**Frontend:** React (Vite) + React Router 
 **Backend:** Node.js + Express
 **Database:** MySQL
 **Auth:** JWT
